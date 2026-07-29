@@ -84,6 +84,8 @@ HYRUS_DEMO_MOCK=1 python -m uvicorn demo.app.main:app --host 127.0.0.1 --port 80
 
 以下指令适合本地演示，也适合后续迁移到服务器。核心思路是先用 Mock 模式确认页面、上传、路由和返回格式，再切到真实模型。
 
+Linux ARM64 + NPU 服务器部署请看：[DEPLOY_NPU_ARM64.md](./DEPLOY_NPU_ARM64.md)。
+
 ### 1. 本地快速演示
 
 ```bash
