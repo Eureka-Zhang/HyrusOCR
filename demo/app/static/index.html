@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>HyrusOCR · Routing Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #08111f;
+      --panel: rgba(14, 28, 47, .82);
+      --panel-strong: #10243c;
+      --line: rgba(144, 186, 226, .18);
+      --text: #eef6ff;
+      --muted: #92a9c0;
+      --blue: #5fbdff;
+      --green: #55e6ad;
+      --orange: #ffbd66;
+      --red: #ff7b8d;
+      --shadow: 0 24px 80px rgba(0, 0, 0, .32);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "PingFang SC",
+        "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 5%, rgba(41, 151, 255, .18), transparent 30%),
+        radial-gradient(circle at 90% 20%, rgba(52, 226, 164, .12), transparent 28%),
+        var(--bg);
+    }
+    a { color: var(--blue); text-decoration: none; }
+    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 64px; }
+    header { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; margin-bottom: 28px; }
+    .eyebrow { color: var(--green); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; font-weight: 800; }
+    h1 { margin: 10px 0 8px; font-size: clamp(30px, 5vw, 52px); letter-spacing: -.04em; }
+    .subtitle { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.7; }
+    .status {
+      display: flex; gap: 9px; align-items: center; padding: 9px 13px;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+      color: var(--muted); white-space: nowrap; font-size: 13px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 18px currentColor; }
+    .dot.ok { background: var(--green); }
+    .grid { display: grid; grid-template-columns: 390px 1fr; gap: 20px; align-items: start; }
+    .panel {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+      box-shadow: var(--shadow); backdrop-filter: blur(18px); overflow: hidden;
+    }
+    .panel-body { padding: 22px; }
+    .panel h2 { margin: 0 0 6px; font-size: 18px; }
+    .help { margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .drop {
+      display: block; padding: 28px 18px; border: 1px dashed rgba(95, 189, 255, .48);
+      border-radius: 15px; text-align: center; cursor: pointer;
+      background: rgba(95, 189, 255, .055); transition: .2s ease;
+    }
+    .drop:hover, .drop.drag { border-color: var(--green); background: rgba(85, 230, 173, .08); transform: translateY(-1px); }
+    .drop strong { display: block; margin-bottom: 6px; }
+    .drop span { color: var(--muted); font-size: 12px; }
+    input[type=file] { display: none; }
+    .file-name { min-height: 20px; margin: 10px 0 0; color: var(--green); font-size: 12px; overflow-wrap: anywhere; }
+    label.field { display: block; margin-top: 16px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    select {
+      width: 100%; margin-top: 7px; padding: 11px 12px; border: 1px solid var(--line);
+      border-radius: 11px; color: var(--text); background: var(--panel-strong); font: inherit;
+    }
+    .check { display: flex; align-items: center; gap: 9px; margin: 16px 0; color: var(--muted); font-size: 13px; }
+    .button {
+      width: 100%; border: 0; border-radius: 12px; padding: 13px 16px;
+      color: #04131f; background: linear-gradient(135deg, var(--green), var(--blue));
+      font-size: 14px; font-weight: 900; cursor: pointer; transition: .2s ease;
+    }
+    .button:hover { transform: translateY(-1px); filter: brightness(1.05); }
+    .button:disabled { opacity: .5; cursor: wait; transform: none; }
+    .rules { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .rule { display: grid; grid-template-columns: 23px 1fr; gap: 8px; margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .rule b { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; color: var(--blue); background: rgba(95, 189, 255, .1); }
+    .empty { min-height: 495px; display: grid; place-items: center; color: var(--muted); text-align: center; padding: 30px; }
+    .empty svg { width: 54px; opacity: .5; margin-bottom: 12px; }
+    .result { display: none; }
+    .route-card { padding: 20px 22px; background: linear-gradient(120deg, rgba(95, 189, 255, .12), rgba(85, 230, 173, .08)); border-bottom: 1px solid var(--line); }
+    .route-top { display: flex; justify-content: space-between; gap: 18px; align-items: center; }
+    .route-name { margin: 5px 0; font-size: 23px; font-weight: 900; }
+    .badge { padding: 6px 9px; border-radius: 999px; color: var(--green); background: rgba(85, 230, 173, .1); font-size: 11px; font-weight: 800; }
+    .route-reason { margin: 6px 0 0; color: var(--muted); line-height: 1.6; font-size: 13px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+    .meta span { padding: 5px 8px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); font-size: 11px; }
+    .tabs { display: flex; gap: 5px; padding: 12px 16px 0; }
+    .tab { border: 0; border-radius: 9px 9px 0 0; padding: 9px 12px; color: var(--muted); background: transparent; cursor: pointer; font-weight: 800; }
+    .tab.active { color: var(--text); background: rgba(95, 189, 255, .1); }
+    .output-wrap { padding: 0 16px 16px; }
+    pre {
+      margin: 0; min-height: 330px; max-height: 590px; overflow: auto; padding: 18px;
+      border: 1px solid var(--line); border-radius: 0 12px 12px 12px;
+      background: rgba(3, 10, 19, .65); color: #dbeeff; white-space: pre-wrap;
+      overflow-wrap: anywhere; font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .error { display: none; margin-top: 13px; padding: 12px; border: 1px solid rgba(255, 123, 141, .3); border-radius: 11px; color: var(--red); background: rgba(255, 123, 141, .08); font-size: 12px; line-height: 1.5; }
+    footer { margin-top: 22px; text-align: center; color: var(--muted); font-size: 12px; }
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; }
+      header { flex-direction: column; }
+      .empty { min-height: 280px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <div class="eyebrow">Document Intelligence Playground</div>
+        <h1>HyrusOCR Routing Demo</h1>
+        <p class="subtitle">上传文件，观察格式识别、处理器路由，以及最终 Markdown / JSON 输出。</p>
+      </div>
+      <div class="status"><i class="dot" id="healthDot"></i><span id="healthText">检查服务中</span></div>
+    </header>
+
+    <section class="grid">
+      <form class="panel" id="parseForm">
+        <div class="panel-body">
+          <h2>提交单据</h2>
+          <p class="help">支持 DOCX、XLSX、PPTX、PDF、PNG、JPEG、TIFF、WebP 等，最大 25 MB。</p>
+          <label class="drop" id="dropZone" for="fileInput">
+            <strong>点击选择或拖入文件</strong>
+            <span>服务端会检查文件内容，不只依赖扩展名</span>
+          </label>
+          <input id="fileInput" name="file" type="file" required>
+          <div class="file-name" id="fileName"></div>
+
+          <label class="field">处理器
+            <select name="processor">
+              <option value="auto">自动路由（推荐）</option>
+              <option value="office">Office → Markdown</option>
+              <option value="ocr">PP-OCRv6</option>
+              <option value="structure">PP-StructureV3</option>
+              <option value="vl">PaddleOCR-VL</option>
+            </select>
+          </label>
+
+          <label class="field">内容提示
+            <select name="hint">
+              <option value="auto">自动判断</option>
+              <option value="scene">普通图片 / ROI</option>
+              <option value="document">合同 / 表格 / 文档页</option>
+              <option value="complex">复杂排版 / 公式 / 图表</option>
+            </select>
+          </label>
+
+          <label class="check">
+            <input type="checkbox" name="dry_run" value="true">
+            仅展示路由，不执行模型推理
+          </label>
+          <button class="button" id="submitButton" type="submit">开始路由与解析</button>
+          <div class="error" id="errorBox"></div>
+
+          <div class="rules">
+            <div class="eyebrow">Auto Routing</div>
+            <div class="rule"><b>1</b><span>Office 文件 → 原生结构解析</span></div>
+            <div class="rule"><b>2</b><span>复杂文档提示 → PaddleOCR-VL</span></div>
+            <div class="rule"><b>3</b><span>PDF / 文档扫描页 → PP-StructureV3</span></div>
+            <div class="rule"><b>4</b><span>普通图片 / ROI → PP-OCRv6</span></div>
+          </div>
+        </div>
+      </form>
+
+      <section class="panel">
+        <div class="empty" id="emptyState">
+          <div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3">
+              <path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5M8 17h7"/>
+            </svg>
+            <div>解析结果将在这里显示</div>
+          </div>
+        </div>
+        <div class="result" id="resultView">
+          <div class="route-card">
+            <div class="route-top">
+              <div>
+                <div class="eyebrow">Route Decision</div>
+                <div class="route-name" id="routeName"></div>
+              </div>
+              <div class="badge" id="resultStatus"></div>
+            </div>
+            <p class="route-reason" id="routeReason"></p>
+            <div class="meta" id="routeMeta"></div>
+          </div>
+          <div class="tabs">
+            <button type="button" class="tab active" data-tab="markdown">Markdown</button>
+            <button type="button" class="tab" data-tab="json">完整 JSON</button>
+          </div>
+          <div class="output-wrap">
+            <pre id="outputBox"></pre>
+          </div>
+        </div>
+      </section>
+    </section>
+    <footer>API 文档：<a href="/docs" target="_blank">/docs</a> · 健康检查：<a href="/health" target="_blank">/health</a></footer>
+  </main>
+
+  <script>
+    const form = document.querySelector("#parseForm");
+    const fileInput = document.querySelector("#fileInput");
+    const fileName = document.querySelector("#fileName");
+    const dropZone = document.querySelector("#dropZone");
+    const submitButton = document.querySelector("#submitButton");
+    const errorBox = document.querySelector("#errorBox");
+    const emptyState = document.querySelector("#emptyState");
+    const resultView = document.querySelector("#resultView");
+    const outputBox = document.querySelector("#outputBox");
+    let lastResult = null;
+    let activeTab = "markdown";
+
+    async function checkHealth() {
+      try {
+        const health = await fetch("/health").then(r => r.json());
+        document.querySelector("#healthDot").classList.add("ok");
+        document.querySelector("#healthText").textContent =
+          health.mock ? "服务正常 · Mock 模式" : `服务正常 · ${health.device}`;
+      } catch {
+        document.querySelector("#healthText").textContent = "服务不可用";
+      }
+    }
+
+    function updateFileName() {
+      const file = fileInput.files[0];
+      fileName.textContent = file ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB` : "";
+    }
+
+    ["dragenter", "dragover"].forEach(type => dropZone.addEventListener(type, event => {
+      event.preventDefault(); dropZone.classList.add("drag");
+    }));
+    ["dragleave", "drop"].forEach(type => dropZone.addEventListener(type, event => {
+      event.preventDefault(); dropZone.classList.remove("drag");
+    }));
+    dropZone.addEventListener("drop", event => {
+      if (event.dataTransfer.files.length) {
+        fileInput.files = event.dataTransfer.files;
+        updateFileName();
+      }
+    });
+    fileInput.addEventListener("change", updateFileName);
+
+    function renderOutput() {
+      if (!lastResult) return;
+      if (activeTab === "markdown") {
+        outputBox.textContent = lastResult.output?.markdown || "本次请求仅执行路由，没有解析输出。";
+      } else {
+        outputBox.textContent = JSON.stringify(lastResult, null, 2);
+      }
+    }
+
+    document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(item => item.classList.remove("active"));
+      tab.classList.add("active");
+      activeTab = tab.dataset.tab;
+      renderOutput();
+    }));
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (!fileInput.files.length) return;
+      errorBox.style.display = "none";
+      submitButton.disabled = true;
+      submitButton.textContent = "处理中…首次模型加载可能较慢";
+      const payload = new FormData(form);
+      try {
+        const response = await fetch("/api/v1/parse", { method: "POST", body: payload });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.detail || "请求失败");
+        lastResult = body;
+        emptyState.style.display = "none";
+        resultView.style.display = "block";
+        document.querySelector("#routeName").textContent = body.route.processor_name;
+        document.querySelector("#routeReason").textContent = body.route.reason;
+        document.querySelector("#resultStatus").textContent =
+          body.status === "routed" ? "ROUTED" : "SUCCEEDED";
+        document.querySelector("#routeMeta").innerHTML = [
+          body.route.kind.toUpperCase(),
+          body.route.media_type,
+          `识别：${body.route.detected_by}`,
+          `${body.elapsed_ms} ms`
+        ].map(value => `<span>${value}</span>`).join("");
+        renderOutput();
+      } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.style.display = "block";
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "开始路由与解析";
+      }
+    });
+
+    checkHealth();
+  </script>
+</body>
+</html>

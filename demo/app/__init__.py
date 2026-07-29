@@ -1,0 +1,1 @@
+"""HyrusOCR demo application."""
