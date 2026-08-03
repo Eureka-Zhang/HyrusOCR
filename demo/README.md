@@ -76,6 +76,7 @@ HYRUS_DEMO_MOCK=1 python -m uvicorn demo.app.main:app --host 127.0.0.1 --port 80
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `HYRUS_DEMO_DEVICE` | `cpu` | PaddleOCR 推理设备 |
+| `HYRUS_DEMO_STRUCTURE_DISABLE` | 空 | 逗号分隔的 StructureV3 子模型禁用列表（`formula,table,chart,seal,region`），用于规避 NPU 上自回归子模型的问题 |
 | `HYRUS_DEMO_MAX_UPLOAD_MB` | `25` | 最大上传大小 |
 | `HYRUS_DEMO_VL_BACKEND` | 空 | 如 `vllm-server` |
 | `HYRUS_DEMO_VL_SERVER_URL` | 空 | VL 推理服务 URL |

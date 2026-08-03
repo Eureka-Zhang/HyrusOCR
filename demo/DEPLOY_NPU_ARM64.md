@@ -84,6 +84,12 @@ python -m pip install paddle-custom-npu==3.2.0 -i https://www.paddlepaddle.org.c
 python -m pip install numpy==1.26.4 opencv-python==3.4.18.65
 ```
 
+In a fresh venv, also install the Python modules that the CANN TBE compiler imports at op-compile time. Without them the first NPU inference fails with `ACL error, the error code is : 500001` (the Ascend debug plog shows `ModuleNotFoundError` from `tbe`):
+
+```bash
+python -m pip install decorator tornado ml-dtypes cloudpickle absl-py sympy
+```
+
 On ARM64, add this environment variable if `libgomp` reports a static TLS error:
 
 ```bash
@@ -130,6 +136,16 @@ cd /data/apps/HyrusOCR
 HYRUS_DEMO_DEVICE=npu \
 python -m uvicorn demo.app.main:app --host 0.0.0.0 --port 9001
 ```
+
+Known paddle-custom-npu 3.2.0 limitation: the autoregressive sub-models of PP-StructureV3 (formula recognition PP-FormulaNet, table recognition SLANet, and similar) hang or crash the worker with a segmentation fault inside `WhileInstruction` on Ascend NPU. Plain OCR (PP-OCRv6) and the rest of the StructureV3 pipeline (orientation, unwarping, layout, OCR) run fine on NPU. If documents must be parsed on NPU, disable those sub-models:
+
+```bash
+HYRUS_DEMO_DEVICE=npu \
+HYRUS_DEMO_STRUCTURE_DISABLE=formula,table,chart,seal,region \
+python -m uvicorn demo.app.main:app --host 0.0.0.0 --port 9001
+```
+
+With the full StructureV3 pipeline required (formulas/tables), run the service on CPU instead (`HYRUS_DEMO_DEVICE=cpu`), which is complete but slower.
 
 If the runtime requires an explicit card index, use:
 
@@ -222,6 +238,8 @@ For a more stable deployment, use `systemd`, `supervisor`, or the platform proce
 | Symptom | What to check |
 | --- | --- |
 | Cannot import PaddlePaddle NPU | Confirm `paddlepaddle` and `paddle-custom-npu` versions match. |
+| First NPU inference fails with `ACL error 500001` | CANN TBE compiler python deps are missing in the venv. Run `pip install decorator tornado ml-dtypes cloudpickle absl-py sympy` (check `~/ascend/log/debug/plog` for `ModuleNotFoundError`). |
+| Worker hangs or segfaults on StructureV3 with formulas/tables | Known paddle-custom-npu 3.2.0 issue with autoregressive sub-models. Set `HYRUS_DEMO_STRUCTURE_DISABLE=formula,table,chart,seal,region` or run with `HYRUS_DEMO_DEVICE=cpu`. |
 | `npu-smi` not found in Docker | Mount `/usr/local/bin/npu-smi` and Ascend driver paths. |
 | ARM64 `libgomp` error | Set `LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1:$LD_PRELOAD`. |
 | First request is very slow | It is usually downloading and loading weights. Run warm-up once before the demo. |

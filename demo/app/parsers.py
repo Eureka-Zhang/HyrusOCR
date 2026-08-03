@@ -137,7 +137,23 @@ class PipelineManager:
                 use_textline_orientation=False,
             )
         if processor == "structure":
-            return PPStructureV3(device=device)
+            kwargs: dict[str, Any] = {"device": device}
+            disabled = {
+                item.strip()
+                for item in os.getenv("HYRUS_DEMO_STRUCTURE_DISABLE", "").split(",")
+                if item.strip()
+            }
+            submodel_flags = {
+                "formula": "use_formula_recognition",
+                "table": "use_table_recognition",
+                "chart": "use_chart_recognition",
+                "seal": "use_seal_recognition",
+                "region": "use_region_detection",
+            }
+            for name, flag in submodel_flags.items():
+                if name in disabled:
+                    kwargs[flag] = False
+            return PPStructureV3(**kwargs)
         if processor == "vl":
             kwargs: dict[str, Any] = {"device": device}
             backend = os.getenv("HYRUS_DEMO_VL_BACKEND")
@@ -205,8 +221,15 @@ def _parse_document_pipeline(path: Path, processor: str) -> ParsedOutput:
     markdown = ""
     if markdown_objects:
         try:
-            markdown = pipeline.concatenate_markdown_pages(markdown_objects)
+            concatenated = pipeline.concatenate_markdown_pages(markdown_objects)
+            if isinstance(concatenated, str):
+                markdown = concatenated
+            else:
+                # paddlex returns a MarkdownResult (dict-like with markdown_texts)
+                markdown = _markdown_text(_markdown_dict(concatenated))
         except Exception:
+            markdown = ""
+        if not markdown:
             markdown = "\n\n".join(
                 text for item in markdown_objects if (text := _markdown_text(item))
             )
