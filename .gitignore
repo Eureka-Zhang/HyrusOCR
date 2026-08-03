@@ -38,3 +38,6 @@ test_tipc/web/node_modules/
 
 .venv/
 .worktrees/
+
+# Ascend CANN op-compile cache
+kernel_meta/
